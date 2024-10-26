@@ -833,16 +833,16 @@ describe('AuditService', () => {
       expect(result).toEqual(audit);
     });
 
-    it('should return null if no audit is found with the provided ID', async () => {
+    it('should throw NotFoundException if no audit is found with the provided ID', async () => {
       prisma.audit.findUnique.mockResolvedValue(null);
 
-      const result = await service.findAuditById('nonexistentId');
+      await expect(service.findAuditById('nonexistentId')).rejects.toThrow(
+        NotFoundException,
+      );
 
       expect(prisma.audit.findUnique).toHaveBeenCalledWith({
         where: { id: 'nonexistentId' },
       });
-
-      expect(result).toBeNull();
     });
 
     it('should throw an error if findUnique throws an error', async () => {

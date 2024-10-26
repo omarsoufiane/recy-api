@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Logger,
   NotFoundException,
   Param,
@@ -12,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Audit } from '@prisma/client';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
 import { ZodValidationPipe } from '@/shared/utils/zod-validation.pipe';
 
@@ -23,9 +25,11 @@ import { UpdateAuditDto, UpdateAuditSchema } from './dtos/update-audit.dto';
 @ApiTags('audits')
 @Controller({ path: 'audits', version: '1' })
 export class AuditController {
-  private readonly logger = new Logger(AuditController.name); // Initialize logger for the controller
-
-  constructor(private readonly auditService: AuditService) {}
+  constructor(
+    private readonly auditService: AuditService,
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: Logger,
+  ) { }
 
   @Post()
   @ApiOperation({ summary: 'Create an audit' })

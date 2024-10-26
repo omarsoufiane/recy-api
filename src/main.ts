@@ -1,5 +1,4 @@
 import './shared/utils/bigint-polyfill';
-import 'winston-daily-rotate-file';
 
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -8,48 +7,20 @@ import {
   SwaggerCustomOptions,
   SwaggerModule,
 } from '@nestjs/swagger';
-import { WinstonModule } from 'nest-winston';
-import * as winston from 'winston';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import winston from 'winston';
 
 import { AppModule } from './app.module';
+import { winstonLoggerOptions } from './modules/logger/logger.config';
 
 async function bootstrap() {
-  // Improved Winston Logger with environment-based transports
-  const logger = WinstonModule.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    transports: [
-      new winston.transports.Console({
-        format: winston.format.combine(
-          winston.format.colorize({ all: true }),
-          winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-          winston.format.printf(
-            ({ timestamp, level, message, context, stack }) => {
-              return `${timestamp} [${level}]${context ? ' [' + context + ']' : ''
-                }: ${message} ${stack ? '\n' + stack : ''}`;
-            },
-          ),
-        ),
-      }),
-      new winston.transports.DailyRotateFile({
-        filename: 'logs/application-%DATE%.log',
-        datePattern: 'YYYY-MM-DD',
-        zippedArchive: true,
-        maxSize: '20m',
-        maxFiles: '14d',
-        format: winston.format.combine(
-          winston.format.timestamp(),
-          winston.format.json(),
-        ),
-        level: 'info',
-      }),
-    ],
-
-    silent: process.env.NODE_ENV === 'test',
-  });
-
   const app = await NestFactory.create(AppModule, {
-    logger,
+    logger: winston.createLogger(winstonLoggerOptions),
   });
+
+  const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
+
+  app.useLogger(logger);
 
   logger.log('Starting application...', 'Bootstrap');
 
