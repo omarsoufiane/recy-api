@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   HttpException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Audit, Prisma } from '@prisma/client';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ulid } from 'ulid';
 
 import { PrismaService } from '@/modules/prisma/prisma.service';
@@ -18,11 +20,11 @@ import { UpdateAuditDto } from './dtos/update-audit.dto';
 
 @Injectable()
 export class AuditService {
-  private readonly logger = new Logger(AuditService.name); // Initialize logger
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly web3Service: Web3Service,
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: Logger,
   ) {}
 
   async createAudit(createAuditDto: CreateAuditDto): Promise<Audit> {
