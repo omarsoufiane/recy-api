@@ -118,20 +118,27 @@ export class AuditController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Retrieve a specific audit by ID' })
-  @ApiParam({ name: 'id', type: 'string', description: 'The ID of the audit' })
+  @ApiParam({
+    name: 'id',
+    type: 'string',
+    description: 'The ID of the audit',
+    example: '4',
+  })
   @ApiResponse({
     status: 200,
     description: 'The audit with the specified ID.',
   })
   @ApiResponse({ status: 404, description: 'Audit not found.' })
   async findOne(@Param('id') id: string): Promise<Audit> {
-    this.logger.log(`Retrieving audit with ID: ${id}`, 'FindAuditById');
+    this.logger.log(
+      `Retrieving audit with ID: ${id}`,
+      'AuditController - findOne',
+    );
     const audit = await this.auditService.findAuditById(id);
-    if (!audit) {
-      this.logger.warn(`Audit with ID ${id} not found`, 'FindAuditById');
-      throw new NotFoundException(`Audit with ID ${id} not found.`);
-    }
-    this.logger.log(`Retrieved audit with ID: ${id}`, 'FindAuditById');
+    this.logger.log(
+      `Retrieved audit with ID: ${id}`,
+      'AuditController - findOne',
+    );
     return audit;
   }
 
@@ -143,14 +150,20 @@ export class AuditController {
     description: 'The audit has been successfully updated.',
   })
   @ApiResponse({ status: 404, description: 'Audit not found.' })
+  @UsePipes(new ZodValidationPipe(UpdateAuditSchema))
   async update(
     @Param('id') id: string,
-    @Body(new ZodValidationPipe(UpdateAuditSchema))
-    updateAuditDto: UpdateAuditDto,
+    @Body() updateAuditDto: UpdateAuditDto,
   ): Promise<Audit> {
-    this.logger.log(`Updating audit with ID: ${id}`, 'UpdateAudit');
+    this.logger.log(
+      `Updating audit with ID: ${id}`,
+      'AuditController - update',
+    );
     const audit = await this.auditService.updateAudit(id, updateAuditDto);
-    this.logger.log(`Audit with ID ${id} successfully updated`, 'UpdateAudit');
+    this.logger.log(
+      `Audit with ID ${id} successfully updated`,
+      'AuditController - update',
+    );
     return audit;
   }
 
@@ -163,20 +176,30 @@ export class AuditController {
   })
   @ApiResponse({ status: 404, description: 'Audit not found.' })
   async remove(@Param('id') id: string): Promise<Audit> {
-    this.logger.log(`Deleting audit with ID: ${id}`, 'DeleteAudit');
+    this.logger.log(
+      `Deleting audit with ID: ${id}`,
+      'AuditController - remove',
+    );
     const audit = await this.auditService.deleteAudit(id);
-    this.logger.log(`Audit with ID ${id} successfully deleted`, 'DeleteAudit');
+    this.logger.log(
+      `Audit with ID ${id} successfully deleted`,
+      'AuditController - remove',
+    );
     return audit;
   }
 
   @Post('mint')
-  async mint(
-    @Body(new ZodValidationPipe(MintNftSchema))
-    mintNftDto: MintNftDto,
-  ) {
-    this.logger.log('Minting NFT for audit', 'MintNFT');
+  @ApiOperation({ summary: 'Mint an NFT for an audit' })
+  @ApiResponse({
+    status: 200,
+    description: 'NFT has been successfully minted.',
+  })
+  @ApiResponse({ status: 400, description: 'Bad request.' })
+  @UsePipes(new ZodValidationPipe(MintNftSchema))
+  async mint(@Body() mintNftDto: MintNftDto) {
+    this.logger.log('Minting NFT for audit', 'AuditController - mint');
     const result = await this.auditService.mintNFT(mintNftDto);
-    this.logger.log('NFT successfully minted', 'MintNFT');
+    this.logger.log('NFT successfully minted', 'AuditController - mint');
     return result;
   }
 }

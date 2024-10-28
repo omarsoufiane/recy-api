@@ -152,7 +152,7 @@ export class AuditService {
     }
   }
 
-  async findAuditById(id: string): Promise<Audit | null> {
+  async findAuditById(id: string): Promise<Audit> {
     this.logger.log(`Retrieving audit with ID: ${id}`, 'FindAuditById');
     const audit = await this.prisma.audit.findUnique({ where: { id } });
 
@@ -173,7 +173,6 @@ export class AuditService {
     const existingAudit = await this.prisma.audit.findUnique({ where: { id } });
 
     if (!existingAudit) {
-      this.logger.warn(`Audit with ID ${id} not found`, 'UpdateAudit');
       throw new NotFoundException(`Audit with ID ${id} not found.`);
     }
 
