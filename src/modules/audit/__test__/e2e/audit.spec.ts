@@ -1,4 +1,5 @@
 import { INestApplication, VersioningType } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Audit } from '@prisma/client';
 import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
@@ -28,7 +29,7 @@ describe('Audit (e2e)', () => {
             findAuditById: jest.fn(),
             updateAudit: jest.fn(),
             deleteAudit: jest.fn(),
-            owner: jest.fn(),
+            mintNFT: jest.fn(),
           },
         },
         {
@@ -168,13 +169,20 @@ describe('Audit (e2e)', () => {
     });
 
     it('should return 404 when the audit does not exist', async () => {
-      jest.spyOn(service, 'findAuditById').mockResolvedValue(null);
+      jest
+        .spyOn(service, 'findAuditById')
+        .mockRejectedValue(
+          new NotFoundException('Audit with ID nonexistentId not found.'),
+        );
 
       await request(app.getHttpServer())
         .get('/v1/audits/nonexistentId')
         .expect(404)
-        .expect(() => {
-          expect(service.findAuditById).toHaveBeenCalledWith('nonexistentId');
+        .expect((res) => {
+          expect(res.body).toHaveProperty('message');
+          expect(res.body.message).toBe(
+            'Audit with ID nonexistentId not found.',
+          );
         });
     });
   });
@@ -210,12 +218,11 @@ describe('Audit (e2e)', () => {
 
       const response = await request(app.getHttpServer())
         .put('/v1/audits/audit123')
-        .send(updateAuditDto)
-        .expect(async (res) => {
-          if (res.status !== 200) {
-            console.log('PUT/v1/audits/audit123 response:', res.body);
-          }
-        });
+        .send(updateAuditDto);
+
+      if (response.status !== 200) {
+        console.log('PUT /v1/audits/audit123 response:', response.body);
+      }
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
