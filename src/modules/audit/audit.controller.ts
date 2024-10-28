@@ -35,7 +35,7 @@ export class AuditController {
     private readonly auditService: AuditService,
     @Inject(WINSTON_MODULE_NEST_PROVIDER)
     private readonly logger: Logger,
-  ) {}
+  ) { }
 
   @Post()
   @ApiOperation({ summary: 'Create an audit' })
@@ -150,10 +150,10 @@ export class AuditController {
     description: 'The audit has been successfully updated.',
   })
   @ApiResponse({ status: 404, description: 'Audit not found.' })
-  @UsePipes(new ZodValidationPipe(UpdateAuditSchema))
   async update(
     @Param('id') id: string,
-    @Body() updateAuditDto: UpdateAuditDto,
+    @Body(new ZodValidationPipe(UpdateAuditSchema))
+    updateAuditDto: UpdateAuditDto,
   ): Promise<Audit> {
     this.logger.log(
       `Updating audit with ID: ${id}`,
