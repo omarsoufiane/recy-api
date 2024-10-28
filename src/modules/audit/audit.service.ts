@@ -1,12 +1,13 @@
 import {
   BadRequestException,
+  HttpException,
   Inject,
   Injectable,
   InternalServerErrorException,
-  LoggerService,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Audit } from '@prisma/client';
+import { Audit, Prisma } from '@prisma/client';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ulid } from 'ulid';
 
@@ -23,78 +24,90 @@ export class AuditService {
     private readonly prisma: PrismaService,
     private readonly web3Service: Web3Service,
     @Inject(WINSTON_MODULE_NEST_PROVIDER)
-    private readonly logger: LoggerService,
-  ) { }
+    private readonly logger: Logger,
+  ) {}
 
   async createAudit(createAuditDto: CreateAuditDto): Promise<Audit> {
     const { reportId, audited, auditorId, comments } = createAuditDto;
-    this.logger.log('Starting audit creation', 'AuditService - createAudit');
 
-    await this.ensureReportExists(reportId);
-    const audit = await this.createAuditRecord(
-      reportId,
-      audited,
-      auditorId,
-      comments,
-    );
-    await this.markReportAsAudited(reportId, audited);
-
-    this.logger.log(
-      `Audit created with ID: ${audit.id}`,
-      'AuditService - createAudit',
-    );
-    return audit;
-  }
-
-  private async ensureReportExists(reportId: string): Promise<void> {
-    const report = await this.prisma.recyclingReport.findUnique({
-      where: { id: reportId },
-    });
-
-    if (!report) {
-      throw new NotFoundException(
-        'Audit creation failed because there is no valid report with this ID.',
-      );
-    }
-  }
-
-  private async createAuditRecord(
-    reportId: string,
-    audited: boolean,
-    auditorId: string,
-    comments: string | undefined,
-  ): Promise<Audit> {
-    const auditId = ulid();
     try {
-      return await this.prisma.audit.create({
+      this.logger.log('Starting audit creation');
+
+      const recyclingReport = await this.prisma.recyclingReport.findUnique({
+        where: { id: reportId },
+      });
+
+      if (!recyclingReport) {
+        this.logger.warn(
+          `RecyclingReport with ID ${reportId} not found.`,
+          'CreateAudit',
+        );
+        throw new NotFoundException(
+          `RecyclingReport with ID ${reportId} not found.`,
+        );
+      }
+
+      // Generate ULID for the audit ID
+      const auditId = ulid();
+
+      const audit = await this.prisma.audit.create({
         data: {
           id: auditId,
-          reportId,
+          reportId: reportId,
           audited,
-          auditorId,
+          auditorId: auditorId,
           comments,
         },
       });
-    } catch (error) {
-      throw new BadRequestException(
-        'Audit creation failed due to an issue while saving the audit record.',
-      );
-    }
-  }
 
-  private async markReportAsAudited(
-    reportId: string,
-    audited: boolean,
-  ): Promise<void> {
-    try {
       await this.prisma.recyclingReport.update({
         where: { id: reportId },
-        data: { audited },
+        data: {
+          audited,
+        },
       });
-    } catch (error) {
-      throw new InternalServerErrorException(
-        'Audit was created, but marking the report as audited failed.',
+
+      this.logger.log(`Audit created with ID: ${audit.id}`);
+      return audit;
+    } catch (error: unknown) {
+      const err = error as Error;
+      this.logger.error(
+        'Error occurred during audit creation',
+        err.stack || JSON.stringify(error),
+        'CreateAudit',
       );
+
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2003') {
+          this.logger.warn(
+            `Foreign key constraint failed: ${error.meta?.field_name}`,
+            'CreateAudit',
+          );
+          throw new BadRequestException(
+            `Foreign key constraint failed on the field: ${error.meta?.field_name}`,
+          );
+        }
+
+        if (error.code === 'P2002') {
+          this.logger.warn(
+            `Unique constraint failed: ${error.meta?.target}`,
+            'CreateAudit',
+          );
+          throw new BadRequestException(
+            `Unique constraint failed on the field: ${error.meta?.target}`,
+          );
+        }
+      }
+
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      this.logger.error(
+        'Unexpected error occurred',
+        err.stack || JSON.stringify(error),
+      );
+      throw new InternalServerErrorException('An unexpected error occurred.');
     }
   }
 
@@ -105,9 +118,15 @@ export class AuditService {
     return audits;
   }
 
-  async findAuditById(id: string): Promise<Audit> {
+  async findAuditById(id: string): Promise<Audit | null> {
     this.logger.log(`Retrieving audit with ID: ${id}`, 'FindAuditById');
-    const audit = await this.prisma.audit.findUniqueOrThrow({ where: { id } });
+    const audit = await this.prisma.audit.findUnique({ where: { id } });
+
+    if (!audit) {
+      this.logger.warn(`Audit with ID ${id} not found`, 'FindAuditById');
+      throw new NotFoundException(`Audit with ID ${id} not found.`);
+    }
+
     this.logger.log(`Retrieved audit with ID: ${id}`, 'FindAuditById');
     return audit;
   }
@@ -117,7 +136,12 @@ export class AuditService {
     updateAuditDto: UpdateAuditDto,
   ): Promise<Audit> {
     this.logger.log(`Updating audit with ID: ${id}`, 'UpdateAudit');
-    await this.prisma.audit.findUniqueOrThrow({ where: { id } });
+    const existingAudit = await this.prisma.audit.findUnique({ where: { id } });
+
+    if (!existingAudit) {
+      this.logger.warn(`Audit with ID ${id} not found`, 'UpdateAudit');
+      throw new NotFoundException(`Audit with ID ${id} not found.`);
+    }
 
     const updatedAudit = await this.prisma.audit.update({
       where: { id },
@@ -130,9 +154,17 @@ export class AuditService {
 
   async deleteAudit(id: string): Promise<Audit> {
     this.logger.log(`Deleting audit with ID: ${id}`, 'DeleteAudit');
-    await this.prisma.audit.findUniqueOrThrow({ where: { id } });
+    const audit = await this.prisma.audit.findUnique({ where: { id } });
 
-    const deletedAudit = await this.prisma.audit.delete({ where: { id } });
+    if (!audit) {
+      this.logger.warn(`Audit with ID ${id} not found`, 'DeleteAudit');
+      throw new NotFoundException(`Audit with ID ${id} not found.`);
+    }
+
+    const deletedAudit = await this.prisma.audit.delete({
+      where: { id },
+    });
+
     this.logger.log(`Audit with ID ${id} successfully deleted`, 'DeleteAudit');
     return deletedAudit;
   }
