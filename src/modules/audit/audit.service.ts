@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  GatewayTimeoutException,
   HttpException,
   Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { Audit, Prisma } from '@prisma/client';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
@@ -112,10 +114,42 @@ export class AuditService {
   }
 
   async findAllAudits(): Promise<Audit[]> {
-    this.logger.log('Retrieving all audits', 'FindAllAudits');
-    const audits = await this.prisma.audit.findMany();
-    this.logger.log(`Retrieved ${audits.length} audits`, 'FindAllAudits');
-    return audits;
+    this.logger.log('Executing findAllAudits', 'AuditService - findAllAudits');
+
+    try {
+      const audits = await this.prisma.audit.findMany();
+
+      this.logger.log(
+        `Retrieved ${audits.length} audits successfully`,
+        'AuditService - findAllAudits',
+      );
+
+      return audits;
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  private handleError(error: unknown): never {
+    this.logger.error(
+      'An error occurred while retrieving audits',
+      error instanceof Error ? error.stack : JSON.stringify(error),
+      'AuditService - findAllAudits',
+    );
+
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      throw new ServiceUnavailableException(
+        'Database connection error. Please try again later.',
+      );
+    } else if (error instanceof Prisma.PrismaClientRustPanicError) {
+      throw new GatewayTimeoutException(
+        'Database engine encountered an unexpected error. Please try again later.',
+      );
+    } else {
+      throw new InternalServerErrorException(
+        'An unexpected error occurred while retrieving audits. Please try again later.',
+      );
+    }
   }
 
   async findAuditById(id: string): Promise<Audit | null> {

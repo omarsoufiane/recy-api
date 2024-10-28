@@ -11,7 +11,13 @@ import {
   Put,
   UsePipes,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Audit } from '@prisma/client';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 
@@ -29,13 +35,43 @@ export class AuditController {
     private readonly auditService: AuditService,
     @Inject(WINSTON_MODULE_NEST_PROVIDER)
     private readonly logger: Logger,
-  ) { }
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create an audit' })
   @ApiResponse({
     status: 201,
     description: 'The audit has been successfully created.',
+  })
+  @ApiBody({
+    description: 'Create an audit with default values',
+    schema: {
+      type: 'object',
+      properties: {
+        reportId: {
+          type: 'string',
+          example: '1',
+          description: 'The ID of the report',
+        },
+        audited: {
+          type: 'boolean',
+          example: false,
+          default: false,
+          description: 'Whether the audit is marked as audited',
+        },
+        auditorId: {
+          type: 'string',
+          example: '1',
+          description: 'The ID of the auditor',
+        },
+        comments: {
+          type: 'string',
+          example: 'Initial audit comments',
+          default: '',
+          description: 'Comments for the audit',
+        },
+      },
+    },
   })
   @ApiResponse({ status: 400, description: 'Bad request.' })
   @UsePipes(new ZodValidationPipe(CreateAuditSchema))
@@ -52,10 +88,31 @@ export class AuditController {
     status: 200,
     description: 'List of all audits.',
   })
+  @ApiResponse({
+    status: 503,
+    description: 'Service unavailable due to database connection issues.',
+  })
+  @ApiResponse({
+    status: 504,
+    description: 'Gateway timeout due to database engine error.',
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Unexpected server error.',
+  })
   async findAll(): Promise<Audit[]> {
-    this.logger.log('Retrieving all audits', 'FindAllAudits');
+    this.logger.log(
+      'Starting retrieval of all audits',
+      'AuditController - findAll',
+    );
+
     const audits = await this.auditService.findAllAudits();
-    this.logger.log(`Retrieved ${audits.length} audits`, 'FindAllAudits');
+
+    this.logger.log(
+      `Successfully retrieved ${audits.length} audits`,
+      'AuditController - findAll',
+    );
+
     return audits;
   }
 

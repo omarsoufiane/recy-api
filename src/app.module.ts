@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './modules/audit/audit.module';
 import { CalculatorModule } from './modules/calculator';
 import { HealthModule } from './modules/health/health.module';
+import { LoggerModule } from './modules/logger/logger.module';
 import { MailModule } from './modules/mail/mail.module';
 import { RecyclingReportModule } from './modules/recycling-report';
 import { UploadModule } from './modules/upload/upload.module';
@@ -19,6 +20,7 @@ import { Web3Module } from './modules/web3/web3.module';
     }),
     Web3Module,
     UploadModule,
+    LoggerModule,
     CalculatorModule,
     MailModule,
     RecyclingReportModule,
