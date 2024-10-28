@@ -12,6 +12,7 @@ import winston from 'winston';
 
 import { AppModule } from './app.module';
 import { winstonLoggerOptions } from './modules/logger/logger.config';
+import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -55,6 +56,8 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   logger.log('Global validation pipes enabled.', 'Bootstrap');
+  app.useGlobalFilters(new AllExceptionsFilter(logger));
+  logger.log('Global expections filters enabled.', 'Bootstrap');
 
   const port = process.env.PORT || 3333;
   await app.listen(port);
