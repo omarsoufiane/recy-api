@@ -104,10 +104,5 @@ services:
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: recy-api
 
-  adminer:
-    image: adminer
-    ports:
-      - 8080:8080
-
 volumes:
   recy-db:

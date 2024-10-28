@@ -28,7 +28,11 @@ const otelSDK = new NodeSDK({
   metricReader,
   spanProcessor: spanProcessor,
   contextManager: new AsyncLocalStorageContextManager(),
-  instrumentations: [getNodeAutoInstrumentations()],
+  instrumentations: [
+    getNodeAutoInstrumentations(),
+    new ExpressInstrumentation(),
+    new NestInstrumentation(),
+  ],
   textMapPropagator: new CompositePropagator({
     propagators: [
       new W3CTraceContextPropagator(),
@@ -49,7 +53,7 @@ process.on('SIGTERM', () => {
     .shutdown()
     .then(
       () => console.log('SDK shut down successfully'),
-      (err) => console.log('Error shutting down SDK', err),
+      (err) => console.error('Error shutting down SDK', err),
     )
     .finally(() => process.exit(0));
 });
