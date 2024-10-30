@@ -1,7 +1,10 @@
 import { INestApplication, VersioningType } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Audit } from '@prisma/client';
+import { DeepMockProxy, mockDeep } from 'jest-mock-extended';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import request from 'supertest';
+import { Logger } from 'winston';
 
 import { AuditController } from '../../audit.controller';
 import { AuditService } from '../../audit.service';
@@ -11,6 +14,7 @@ import { UpdateAuditDto } from '../../dtos/update-audit.dto';
 describe('Audit (e2e)', () => {
   let app: INestApplication;
   let service: AuditService;
+  let logger: DeepMockProxy<Logger>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -27,11 +31,14 @@ describe('Audit (e2e)', () => {
             owner: jest.fn(),
           },
         },
+        {
+          provide: WINSTON_MODULE_NEST_PROVIDER,
+          useValue: mockDeep<Logger>(),
+        },
       ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
-
     app.enableVersioning({
       type: VersioningType.URI,
     });
@@ -39,6 +46,9 @@ describe('Audit (e2e)', () => {
     await app.init();
 
     service = moduleFixture.get<AuditService>(AuditService);
+    logger = moduleFixture.get(
+      WINSTON_MODULE_NEST_PROVIDER,
+    ) as DeepMockProxy<Logger>;
   });
 
   afterAll(async () => {
