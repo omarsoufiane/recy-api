@@ -71,6 +71,7 @@ describe('AuditService', () => {
       evidenceUrl: 'http://evidence.url',
       createdAt: new Date(),
       updatedAt: new Date(),
+      metadata: {},
     };
 
     const createdAudit: Audit = {
