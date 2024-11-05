@@ -80,7 +80,7 @@ services:
       - tempo
       - loki
 
-  recy-api:
+  backend:
     build: .
     ports:
       - 3333:3333
@@ -89,10 +89,12 @@ services:
     volumes:
       - ./data/logs:/app/logs
     environment:
-      OTEL_SERVICE_NAME: recy-api
+      OTEL_SERVICE_NAME: backend
     depends_on:
       - otel-collector
-
+      - postgres
+    env_file:
+      - .env
   postgres:
     image: postgres:16.3-alpine
     ports:

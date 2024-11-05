@@ -12,7 +12,6 @@ import { NestInstrumentation } from '@opentelemetry/instrumentation-nestjs-core'
 import { B3InjectEncoding, B3Propagator } from '@opentelemetry/propagator-b3';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import * as process from 'process';
 
 const metricReader = new PrometheusExporter({
   port: 8081,
@@ -46,14 +45,3 @@ const otelSDK = new NodeSDK({
 });
 
 export default otelSDK;
-// You can also use the shutdown method to gracefully shut down the SDK before process shutdown
-// or on some operating system signal.
-process.on('SIGTERM', () => {
-  otelSDK
-    .shutdown()
-    .then(
-      () => console.log('SDK shut down successfully'),
-      (err) => console.error('Error shutting down SDK', err),
-    )
-    .finally(() => process.exit(0));
-});

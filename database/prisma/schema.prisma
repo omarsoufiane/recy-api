@@ -1,0 +1,78 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ResidueType {
+  GLASS
+  METAL
+  ORGANIC
+  PAPER
+  PLASTIC
+  TEXTILE
+  LANDFILL_WASTE
+}
+
+model User {
+  id            String   @id @default(uuid()) 
+  name          String
+  email         String   @unique
+  phone         String?
+  walletAddress String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  audits           Audit[]           @relation("UserAudits")
+  userRoles        UserRole[]        @relation("UserRoles")
+  recyclingReports RecyclingReport[] @relation("UserRecyclingReport")
+}
+
+model Role {
+  id    String     @id @default(uuid())
+  name  String     @unique
+  users UserRole[]
+}
+
+model UserRole {
+  id     String @id @default(uuid())
+  userId String
+  roleId String
+
+  user User @relation("UserRoles", fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+}
+
+model RecyclingReport {
+  id            String   @id @default(uuid())
+  submittedBy   String
+  reportDate    DateTime @default(now())
+  audited       Boolean  @default(false)
+  phone         String?
+  materials     Json
+  walletAddress String?
+  evidenceUrl   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  user   User    @relation("UserRecyclingReport", fields: [submittedBy], references: [id])
+  audits Audit[] @relation("ReportAudits")
+}
+
+model Audit {
+  id        String   @id @default(uuid())
+  reportId  String
+  auditorId String
+  audited   Boolean  @default(false)
+  comments  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  recyclingReport RecyclingReport @relation("ReportAudits", fields: [reportId], references: [id])
+  auditor         User            @relation("UserAudits", fields: [auditorId], references: [id])
+}
